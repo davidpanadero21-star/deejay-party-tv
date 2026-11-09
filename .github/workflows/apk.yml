@@ -1,0 +1,44 @@
+# Compila el APK de Deejay Party para la tele y lo publica en «Releases» (enlace fijo de descarga).
+name: APK de la tele
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Descomprimir el proyecto
+        run: unzip -o proyecto-tv.zip
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14.3'
+      - name: Firma
+        env:
+          FIRMA: ${{ secrets.FIRMA }}
+        run: |
+          if [ -z "$FIRMA" ]; then echo "Falta el secreto FIRMA"; exit 1; fi
+          echo "$FIRMA" | base64 -d > firma.jks
+      - name: Compilar
+        run: gradle --no-daemon assembleRelease
+      - name: Preparar
+        run: cp app/build/outputs/apk/release/app-release.apk DeejayParty-TV.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DeejayParty-TV
+          path: DeejayParty-TV.apk
+      - name: Publicar
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: tele
+          name: Deejay Party para la tele
+          body: "Descarga: DeejayParty-TV.apk (compilación ${{ github.run_number }})"
+          files: DeejayParty-TV.apk
+          make_latest: true
